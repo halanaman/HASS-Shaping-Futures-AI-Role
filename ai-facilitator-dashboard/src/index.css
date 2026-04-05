@@ -1,0 +1,27 @@
+/* body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+} */
+
+@import "tailwindcss";
+
+/* Force Tailwind to scan your project folder */
+@source "../src/**/*.{js,jsx,ts,tsx}";
+
+/* Add a base background so the screen isn't white while loading */
+@layer base {
+  body {
+    @apply bg-slate-950 text-slate-100;
+    margin: 0;
+    padding: 0;
+  }
+}
