@@ -1,295 +1,456 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Activity, Settings, CheckCircle, Users, 
-  AlertTriangle, MessageSquare, Bell, ShieldCheck, Search,
-  Globe, Languages, Send, AlertCircle, X
+  Activity, Settings, Users, ShieldCheck, Search, 
+  Globe, Send, AlertCircle, X, Zap, MessageSquare, 
+  UserPlus, ShieldAlert, CheckCircle2
 } from 'lucide-react';
 
 const App = () => {
-  const [activeTab, setActiveTab] = useState('flow');
+  const [view, setView] = useState('david'); 
+  const [activeTab, setActiveTab] = useState('config');
   const [alerts, setAlerts] = useState([]);
-  const [isGuided, setIsGuided] = useState(true);
-  const [showLanguageModal, setShowLanguageModal] = useState(false);
-  const [isThaiEnabled, setIsThaiEnabled] = useState(false);
-  const [showErrorModal, setShowErrorModal] = useState(false);
   const [qaStatus, setQaStatus] = useState('pending');
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [showCoachingSim, setShowCoachingSim] = useState(false);
+  const [coachResponse, setCoachResponse] = useState("");
+  const [guidedInquiryMode, setGuidedInquiryMode] = useState(true);
+  const [coachAttemptLogged, setCoachAttemptLogged] = useState(false);
 
-  // Mock Data for Questions
-  const [questions, setQuestions] = useState([
-    { id: 1, student: "Jaylen", query: "What is a producer?", status: "AI Answered", time: "2m ago", auto: true },
-    { id: 2, student: "Sophia", query: "Is grass a producer?", status: "AI Answered", time: "1m ago", auto: true },
-    { id: 3, student: "Prakash", query: "Which is bigger, 0.75 or 0.8?", status: "Flagged", type: "Math Error", auto: false },
-    { id: 4, student: "Marcus", query: "...", status: "Inactive", type: "Low Engagement", auto: false }
+  // Scene 3: Individual Student Configs
+  const [studentConfigs, setStudentConfigs] = useState([
+    { id: 1, name: "Jaylen", eng: 9, config: ["TTS"], lang: "English" },
+    { id: 2, name: "Sophia", eng: 8, config: ["Simple Vocab"], lang: "English" },
+    { id: 3, name: "Marcus", eng: 0, config: ["Extension"], lang: "Thai" },
+    { id: 4, name: "Prakash", eng: 7, config: [], lang: "English" },
+    { id: 5, name: "Siti", eng: 4, config: ["Malay Pack"], lang: "Malay" },
+    { id: 6, name: "Wei", eng: 6, config: [], lang: "English" },
   ]);
 
-  // Handle routing a question to the teacher (Scene 5)
-  const routeToTeacher = (query) => {
-    const newAlert = { 
-      id: Date.now(), 
-      msg: `Shared to Teacher: "${query}"`, 
-      type: "pushed" 
-    };
-    setAlerts([newAlert, ...alerts]);
+  // Scene 5: Live Feed Simulation
+  const allQuestions = [
+    { id: 1, student: "Jaylen", query: "What is a producer?", time: "Just now" },
+    { id: 2, student: "Sophia", query: "Is grass a producer?", time: "Just now" },
+    { id: 3, student: "Siti", query: "Define consumer.", time: "Just now" },
+    { id: 4, student: "Wei", query: "Producer vs consumer difference?", time: "Just now" },
+    { id: 5, student: "Jaylen", query: "So a cow is a consumer?", time: "Just now" },
+    // { id: 6, student: "Prakash", query: "Why does this matter in real life?", time: "Just now" },
+  ];
+  const [visibleQuestions, setVisibleQuestions] = useState([]);
+
+  useEffect(() => {
+    if (activeTab === 'flow' && visibleQuestions.length < allQuestions.length) {
+      const timer = setTimeout(() => {
+        setVisibleQuestions(prev => [...prev, allQuestions[prev.length]]);
+      }, 500); 
+      return () => clearTimeout(timer);
+    }
+  }, [activeTab, visibleQuestions]);
+
+  const sendToTan = (msg, type = "pattern") => {
+    setAlerts([{ id: Date.now(), msg, type }, ...alerts]);
   };
 
-  const triggerPatternAlert = () => {
-    const newAlert = { 
-      id: Date.now(), 
-      msg: "Pattern Alert: 5 students asking about Consumers vs Producers", 
-      type: "pedagogical" 
-    };
-    setAlerts([newAlert, ...alerts]);
+  const updateStudentConfig = (id, toggle) => {
+    setStudentConfigs(prev => prev.map(s => {
+      if (s.id === id) {
+        const newConfigs = s.config.includes(toggle) 
+          ? s.config.filter(c => c !== toggle) 
+          : [...s.config, toggle];
+        return { ...s, config: newConfigs };
+      }
+      return s;
+    }));
+    // Update local selection so the UI reflects the change immediately
+    if (selectedStudent && selectedStudent.id === id) {
+      const isRemoving = selectedStudent.config.includes(toggle);
+      setSelectedStudent({
+        ...selectedStudent,
+        config: isRemoving 
+          ? selectedStudent.config.filter(c => c !== toggle) 
+          : [...selectedStudent.config, toggle]
+      });
+    }
+  };
+
+  const updateStudentLanguage = (id, lang) => {
+    setStudentConfigs(prev => prev.map(s => {
+      if (s.id === id) {
+        return { ...s, lang };
+      }
+      return s;
+    }));
+
+    // Keep the details pane in sync with the latest language selection.
+    if (selectedStudent && selectedStudent.id === id) {
+      setSelectedStudent({ ...selectedStudent, lang });
+    }
+  };
+
+  // Heatmap Color Logic: Red (Hot/High) to Blue (Cold/Low)
+  const getHeatColor = (val) => {
+    if (val === 0) return "bg-blue-600 shadow-[0_0_20px_rgba(37,99,235,0.7)] animate-pulse border-blue-400";
+    if (val < 4) return "bg-blue-400/60 border-blue-300/30";
+    if (val < 7) return "bg-orange-500 border-orange-400";
+    return "bg-red-600 border-red-500 shadow-[0_0_15px_rgba(220,38,38,0.3)]";
   };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex font-sans overflow-hidden">
       
-      {/* Sidebar */}
-      <nav className="w-72 bg-slate-900 border-r border-slate-800 p-6 flex flex-col z-20">
-        <div className="flex items-center gap-3 mb-10 px-2">
-          <div className="bg-blue-600 p-2 rounded-lg shadow-lg shadow-blue-900/40">
-            <Activity size={24} className="text-white" />
-          </div>
-          <h1 className="text-xl font-bold tracking-tight">AI Facilitator</h1>
-        </div>
+      {/* Role Switcher */}
+      <div className="fixed top-4 right-4 z-50 flex bg-slate-900 border border-slate-800 rounded-full p-1 shadow-2xl">
+        <button onClick={() => setView('david')} className={`px-4 py-1.5 rounded-full text-[10px] font-bold transition-all ${view === 'david' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}>SPECIALIST</button>
+        <button onClick={() => setView('tan')} className={`px-4 py-1.5 rounded-full text-[10px] font-bold transition-all ${view === 'tan' ? 'bg-amber-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}>MR. TAN'S TABLET</button>
+      </div>
 
-        <div className="space-y-1 flex-1">
-          <NavItem icon={<Settings size={18}/>} label="Configuration" active={activeTab === 'config'} onClick={() => setActiveTab('config')} />
-          <NavItem icon={<MessageSquare size={18}/>} label="Question Flow" active={activeTab === 'flow'} onClick={() => setActiveTab('flow')} />
-          <NavItem icon={<ShieldCheck size={18}/>} label="Quality Review" active={activeTab === 'quality'} onClick={() => setActiveTab('quality')} />
-          <NavItem icon={<Users size={18}/>} label="Student Coaching" active={activeTab === 'coaching'} onClick={() => setActiveTab('coaching')} />
-        </div>
-
-        <div className="mt-auto p-4 bg-blue-600/10 rounded-2xl border border-blue-500/20">
-          <p className="text-[10px] text-blue-400 font-bold uppercase tracking-widest mb-1">Live Session</p>
-          <p className="text-sm font-semibold">Sec 2 Biology: Ecosystems</p>
-          <p className="text-xs text-slate-500 mt-1">Teacher: Mr. Tan</p>
-        </div>
-      </nav>
-
-      {/* Main Viewport */}
-      <main className="flex-1 flex flex-col relative">
-        
-        {/* Header */}
-        <header className="h-20 border-b border-slate-800 bg-slate-950/80 backdrop-blur-md flex items-center justify-between px-8 z-10">
-          <div className="flex items-center gap-4 bg-slate-900/50 px-4 py-2 rounded-xl border border-slate-800 w-80">
-            <Search size={16} className="text-slate-500" />
-            <input type="text" placeholder="Search logs..." className="bg-transparent border-none outline-none text-xs w-full" />
-          </div>
-          
-          <div className="flex items-center gap-4">
-            <button onClick={triggerPatternAlert} className="bg-amber-500/10 text-amber-500 border border-amber-500/20 hover:bg-amber-500 hover:text-white transition-all px-4 py-2 rounded-lg text-[10px] font-bold uppercase">
-              Debug Alert
-            </button>
-            <div className="flex items-center gap-3 border-l border-slate-800 pl-6">
-              <div className="text-right">
-                <p className="text-sm font-bold">David Lee</p>
-                <p className="text-[10px] text-blue-400 font-bold uppercase tracking-tighter text-right">Facilitation Specialist</p>
-              </div>
-              <div className="w-10 h-10 rounded-full bg-slate-800 border-2 border-blue-500"></div>
+      {view === 'david' ? (
+        <>
+          <nav className="w-72 bg-slate-900 border-r border-slate-800 p-6 flex flex-col z-20">
+            <div className="flex items-center gap-3 mb-10 px-2 text-blue-500">
+              <Zap size={28} fill="currentColor" />
+              <h1 className="text-xl font-black italic tracking-tighter text-slate-100">AI OPS</h1>
             </div>
-          </div>
-        </header>
+            <div className="space-y-1 flex-1">
+              <NavItem icon={<Settings size={18}/>} label="Configuration" active={activeTab === 'config'} onClick={() => setActiveTab('config')} />
+              <NavItem icon={<MessageSquare size={18}/>} label="Live Question Flow" active={activeTab === 'flow'} onClick={() => setActiveTab('flow')} />
+              <NavItem icon={<ShieldCheck size={18}/>} label="Quality Assurance" active={activeTab === 'quality'} onClick={() => setActiveTab('quality')} />
+              <NavItem icon={<Activity size={18}/>} label="Equity Heatmap" active={activeTab === 'coaching'} onClick={() => setActiveTab('coaching')} />
+            </div>
+          </nav>
 
-        {/* Dynamic Content */}
-        <div className="p-8 overflow-y-auto flex-1 relative">
-          
-          {/* SCENE 2 & 3: CONFIGURATION */}
-          {activeTab === 'config' && (
-            <div className="max-w-4xl space-y-6 animate-in fade-in zoom-in-95 duration-300">
-              <div className="grid grid-cols-2 gap-6">
-                <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 space-y-6">
-                  <h3 className="font-bold text-lg border-b border-slate-800 pb-4">Agent Settings</h3>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-sm">Guided Inquiry Mode</p>
-                      <p className="text-xs text-slate-500">Socratic questioning enabled</p>
+          <main className="flex-1 flex flex-col relative overflow-hidden bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-slate-950">
+            <header className="h-20 border-b border-slate-800 flex items-center justify-between px-8 bg-slate-950/40 backdrop-blur-xl">
+              <h2 className="text-sm font-bold uppercase tracking-[0.2em] text-slate-500">Live Session: Sec 2 Biology (Ecosystems)</h2>
+            </header>
+
+            <div className="p-8 overflow-y-auto flex-1">
+              {/* CONFIGURATION */}
+              {activeTab === 'config' && (
+                <div className="grid grid-cols-12 gap-8 animate-in fade-in slide-in-from-top-4 duration-500">
+                  <div className="col-span-7 bg-slate-900/50 p-8 rounded-[2rem] border border-slate-800 backdrop-blur-sm">
+                    <h3 className="font-bold mb-8 text-blue-400 uppercase text-[10px] tracking-widest">Seating Plan: Interactive</h3>
+                    <div className="grid grid-cols-3 gap-6">
+                      {studentConfigs.map(s => (
+                        <div 
+                          key={s.id} 
+                          onClick={() => setSelectedStudent(s)}
+                          className={`aspect-square rounded-3xl border-2 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 shadow-xl ${selectedStudent?.id === s.id ? 'border-blue-500 bg-blue-500/10 scale-105 ring-4 ring-blue-500/10' : 'border-slate-800 bg-slate-900/50 hover:border-slate-600'}`}
+                        >
+                          <div className={`p-3 rounded-full mb-2 ${selectedStudent?.id === s.id ? 'bg-blue-500 text-white' : 'bg-slate-800 text-slate-500'}`}>
+                            <Users size={20} />
+                          </div>
+                          <p className="font-bold text-xs">{s.name}</p>
+                          <div className="flex gap-1 mt-2">
+                            {s.config.map(c => <div key={c} className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></div>)}
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                    <button onClick={() => setIsGuided(!isGuided)} className={`w-12 h-6 rounded-full transition-all relative ${isGuided ? 'bg-blue-600' : 'bg-slate-700'}`}>
-                      <div className={`absolute top-1 bg-white w-4 h-4 rounded-full transition-all ${isGuided ? 'right-1' : 'left-1'}`}></div>
-                    </button>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-sm">Language Switching</p>
-                      <p className="text-xs text-slate-500">Enable Thai/Malay support</p>
-                    </div>
-                    <button onClick={() => setIsThaiEnabled(!isThaiEnabled)} className={`w-12 h-6 rounded-full transition-all relative ${isThaiEnabled ? 'bg-green-600' : 'bg-slate-700'}`}>
-                      <div className={`absolute top-1 bg-white w-4 h-4 rounded-full transition-all ${isThaiEnabled ? 'right-1' : 'left-1'}`}></div>
-                    </button>
+
+                  <div className="col-span-5">
+                    {selectedStudent ? (
+                      <div className="bg-slate-900 p-8 rounded-[2rem] border border-blue-500/30 animate-in slide-in-from-right-4">
+                        <div className="flex justify-between items-start mb-6">
+                           <div>
+                              <h3 className="font-black text-2xl tracking-tighter">{selectedStudent.name}</h3>
+                              <p className="text-[10px] text-blue-400 font-bold uppercase tracking-widest">Active Profile</p>
+                           </div>
+                           <div className="bg-slate-950 px-3 py-1 rounded-full text-[10px] font-mono text-slate-500 border border-slate-800">ID: 00{selectedStudent.id}</div>
+                        </div>
+                        
+                        <div className="space-y-3">
+                          <div className="p-5 bg-blue-600/10 rounded-2xl border border-blue-500/30">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-blue-400">Class Setting</p>
+                                <p className="text-xs font-bold text-slate-300 mt-1">Guided Inquiry Mode</p>
+                              </div>
+                              <button
+                                onClick={() => setGuidedInquiryMode(prev => !prev)}
+                                className={`w-14 h-7 rounded-full relative transition-all duration-300 ${guidedInquiryMode ? 'bg-blue-600 shadow-[0_0_15px_rgba(37,99,235,0.4)]' : 'bg-slate-700'}`}
+                              >
+                                <div className={`absolute top-1.5 w-4 h-4 bg-white rounded-full transition-all duration-300 ${guidedInquiryMode ? 'right-1.5' : 'left-1.5'}`} />
+                              </button>
+                            </div>
+                            <p className="text-[10px] text-slate-400 mt-3 leading-relaxed">
+                              {guidedInquiryMode
+                                ? 'Students must submit an attempt before the AI reveals a full answer.'
+                                : 'AI can provide direct answers without a student attempt first.'}
+                            </p>
+                          </div>
+                          <ConfigToggle label="Text-to-Speech" active={selectedStudent.config.includes("TTS")} onToggle={() => updateStudentConfig(selectedStudent.id, "TTS")} />
+                          <ConfigToggle label="Simplified Vocab" active={selectedStudent.config.includes("Simple Vocab")} onToggle={() => updateStudentConfig(selectedStudent.id, "Simple Vocab")} />
+                          <ConfigToggle label="Extension Mode" active={selectedStudent.config.includes("Extension")} onToggle={() => updateStudentConfig(selectedStudent.id, "Extension")} />
+                          <div className="pt-6 mt-4 border-t border-slate-800">
+                            <label className="text-[10px] font-black text-slate-500 uppercase mb-3 block tracking-widest">Language Support</label>
+                            <select
+                              value={selectedStudent.lang}
+                              onChange={(e) => updateStudentLanguage(selectedStudent.id, e.target.value)}
+                              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm font-bold focus:border-blue-500 outline-none transition-all"
+                            >
+                              <option value="English">English (Primary)</option>
+                              <option value="Malay">Malay (Secondary)</option>
+                              <option value="Thai">Thai (Secondary)</option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="h-full border-2 border-dashed border-slate-800 rounded-[2rem] flex flex-col items-center justify-center text-slate-600 p-10 text-center">
+                        <Users size={48} className="mb-4 opacity-20" />
+                        <p className="text-sm font-medium italic">Select a student desk to modify individual AI parameters</p>
+                      </div>
+                    )}
                   </div>
                 </div>
+              )}
 
-                <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800">
-                  <h3 className="font-bold text-lg mb-4">Seating Chart (Individual Config)</h3>
-                  <div className="grid grid-cols-3 gap-3 text-[10px]">
-                    {['Jaylen', 'Sophia', 'Marcus', 'Prakash', 'Siti', 'Wei'].map(name => (
-                      <div key={name} className="bg-slate-950 p-3 rounded-xl border border-slate-800 hover:border-blue-500 cursor-pointer text-center">
-                        <p className="font-bold mb-1 uppercase">{name}</p>
-                        <span className="text-blue-400">Standard</span>
+              {/* LIVE FLOW */}
+              {activeTab === 'flow' && (
+                <div className="grid grid-cols-12 gap-8 max-w-5xl mx-auto animate-in fade-in duration-700">
+                  <div className="col-span-8 space-y-4">
+                    <div className="flex justify-between items-center mb-6">
+                      <h3 className="font-black text-xl italic tracking-tight text-slate-300 underline underline-offset-8 decoration-blue-500/50">Live Stream</h3>
+                      <div className="flex items-center gap-2 bg-green-500/10 px-3 py-1 rounded-full">
+                        <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-ping"></div>
+                        <span className="text-[10px] text-green-500 font-black uppercase">Socket: Connected</span>
+                      </div>
+                    </div>
+                    {visibleQuestions.map((q, i) => (
+                      <div key={i} className="bg-slate-900/40 border border-slate-800/60 p-5 rounded-2xl flex justify-between items-center animate-in slide-in-from-left-8 duration-500 group hover:border-blue-500/50 transition-all">
+                        <div>
+                          <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1">{q.student}</p>
+                          <p className="text-lg font-medium text-slate-200 tracking-tight leading-snug">"{q.query}"</p>
+                        </div>
+                        <button 
+                          onClick={() => sendToTan(`Whole-Class Discussion: "${q.query}"`, "discussion")}
+                          className="p-3 bg-blue-600 text-white rounded-xl hover:bg-blue-500 transition-all shadow-lg shadow-blue-900/20 opacity-0 group-hover:opacity-100"
+                        >
+                          <Send size={18} />
+                        </button>
                       </div>
                     ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* SCENE 5: QUESTION FLOW */}
-          {activeTab === 'flow' && (
-            <div className="grid grid-cols-12 gap-8 animate-in slide-in-from-bottom-4 duration-500">
-              <div className="col-span-8 space-y-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-lg font-bold flex items-center gap-2">Live Stream</h3>
-                  <div className="bg-green-500/10 text-green-500 text-[10px] px-2 py-1 rounded-md font-bold animate-pulse">SYSTEM ACTIVE</div>
-                </div>
-                {questions.map(q => (
-                  <div key={q.id} className="group bg-slate-900/50 p-5 rounded-2xl border border-slate-800 flex justify-between items-center transition-all hover:bg-slate-900">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[10px] font-bold text-blue-500 uppercase">{q.student}</span>
-                        <span className="text-[8px] text-slate-600">{q.time}</span>
-                      </div>
-                      <p className="text-md text-slate-200 font-medium leading-tight">"{q.query}"</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {q.auto ? (
-                         <span className="bg-slate-800 text-slate-500 text-[8px] font-bold px-2 py-1 rounded tracking-tighter uppercase italic">AI Handled</span>
-                      ) : (
-                        <button onClick={() => routeToTeacher(q.query)} className="bg-blue-600 hover:bg-blue-500 text-white p-2 rounded-lg transition-all shadow-lg shadow-blue-900/20">
-                          <Send size={14} />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              
-              <div className="col-span-4 space-y-6">
-                <h3 className="text-lg font-bold">Routing to Mr. Tan</h3>
-                <div className="space-y-3">
-                  {alerts.map(a => (
-                    <div key={a.id} className={`p-4 rounded-2xl border flex gap-3 animate-in slide-in-from-right-4 ${a.type === 'pedagogical' ? 'bg-amber-500/10 border-amber-500/30 text-amber-500' : 'bg-blue-500/10 border-blue-500/30 text-blue-400'}`}>
-                      <AlertCircle size={20} className="shrink-0" />
-                      <p className="text-xs font-semibold leading-relaxed">{a.msg}</p>
-                    </div>
-                  ))}
-                  {alerts.length === 0 && <div className="text-slate-600 text-center py-10 italic text-sm">Dashboard clear...</div>}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* SCENE 7: QUALITY REVIEW */}
-          {activeTab === 'quality' && (
-            <div className="animate-in fade-in duration-500">
-               <div className={`p-8 rounded-3xl border transition-all ${qaStatus === 'resolved' ? 'bg-green-500/5 border-green-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
-                  <div className="flex justify-between items-start mb-8">
-                    <div>
-                      <h4 className={`font-bold text-xl ${qaStatus === 'resolved' ? 'text-green-500' : 'text-red-500'}`}>
-                        {qaStatus === 'resolved' ? 'Error Logged & Student Notified' : 'QA Alert: Accuracy Mismatch'}
-                      </h4>
-                      <p className="text-xs text-slate-500 mt-1 tracking-wider uppercase">Sampled Class 4B | Node ID: PX-99</p>
-                    </div>
-                    <div className="bg-slate-900 px-4 py-2 rounded-xl text-xs font-mono border border-slate-800">
-                      Sample Rate: <span className="text-blue-400">15%</span>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-6 mb-8">
-                    <div className="space-y-2">
-                       <p className="text-[10px] font-bold text-slate-500 uppercase">Input (Prakash)</p>
-                       <div className="bg-slate-950 p-4 rounded-2xl border border-slate-900 italic font-medium">"Which is bigger, 0.75 or 0.8?"</div>
-                    </div>
-                    <div className="space-y-2 text-right">
-                       <p className="text-[10px] font-bold text-red-400 uppercase tracking-tighter">AI Output (Incorrect)</p>
-                       <div className="bg-slate-950 p-4 rounded-2xl border border-red-500/20 italic font-medium text-red-200">"0.75 is bigger because it has more digits."</div>
-                    </div>
-                  </div>
-
-                  {qaStatus === 'pending' && (
-                    <div className="flex gap-4">
-                      <button onClick={() => setShowErrorModal(true)} className="bg-red-600 hover:bg-red-500 text-white px-8 py-3 rounded-2xl font-bold transition-all shadow-xl shadow-red-900/20">
-                        Report Error
+                    {visibleQuestions.length >= 5 && (
+                      <button 
+                        onClick={() => sendToTan("Pattern Alert: 5 students asking about Producers/Consumers. Review required.", "pattern")}
+                        className="w-full py-6 border-2 border-dashed border-amber-500/40 rounded-2xl text-amber-500 font-black text-xs uppercase tracking-widest hover:bg-amber-500/10 transition-all"
+                      >
+                        Push Pattern Alert to Mr. Tan
                       </button>
-                      <button className="bg-slate-800 px-6 py-3 rounded-2xl font-bold text-sm">Ignore (False Positive)</button>
-                    </div>
-                  )}
-               </div>
-            </div>
-          )}
-
-          {/* SCENE 9: EQUITY HEATMAP */}
-          {activeTab === 'coaching' && (
-            <div className="grid grid-cols-2 gap-10 animate-in zoom-in-95 duration-500">
-               <div className="bg-slate-900 p-8 rounded-3xl border border-slate-800">
-                  <h4 className="font-bold text-lg mb-6 flex items-center gap-2"><Globe className="text-cyan-500" /> Interaction Heatmap</h4>
-                  <div className="grid grid-cols-4 gap-4 aspect-square">
-                     {Array.from({length: 16}).map((_, i) => (
-                       <div key={i} className={`rounded-xl transition-all border border-white/5 flex items-center justify-center text-[8px] font-bold ${i === 2 ? 'bg-blue-600/60 shadow-[0_0_20px_rgba(37,99,235,0.5)] border-blue-400 animate-pulse' : 'bg-amber-500/20'}`}>
-                          {i === 2 ? 'MARCUS (COLD)' : 'NODE'}
-                       </div>
-                     ))}
+                    )}
                   </div>
-                  <p className="text-[10px] text-slate-500 mt-6 text-center italic tracking-wide font-bold">Blue = No interaction for 20+ mins</p>
-               </div>
+                </div>
+              )}
 
-               <div className="space-y-6">
-                 <div className="bg-cyan-500/10 border border-cyan-500/20 p-6 rounded-3xl">
-                    <h4 className="font-bold text-cyan-500 mb-2 tracking-tight flex items-center gap-2 uppercase text-xs underline underline-offset-4">Coaching Task</h4>
-                    <p className="text-sm font-semibold mb-4 leading-relaxed italic">"Marcus Lim has 0 prompts this unit. Language level: English (Intermediate). Confidence: Low."</p>
-                    <button className="w-full bg-cyan-600 hover:bg-cyan-500 text-white py-3 rounded-xl font-bold transition-all text-xs">Open Student Coaching Screen</button>
-                 </div>
-               </div>
+              {/* QUALITY ASSURANCE (Fixed/Updated) */}
+              {activeTab === 'quality' && (
+                <div className="max-w-4xl mx-auto animate-in fade-in zoom-in-95 duration-500">
+                  <div className={`p-10 rounded-[2.5rem] border-2 shadow-2xl transition-all duration-500 ${qaStatus === 'resolved' ? 'bg-green-500/5 border-green-500/30' : 'bg-red-500/5 border-red-500/30'}`}>
+                    <div className="flex justify-between items-start mb-10">
+                      <div>
+                        <div className="flex items-center gap-3 mb-2">
+                           <ShieldAlert className={qaStatus === 'resolved' ? 'text-green-500' : 'text-red-500'} size={32} />
+                           <h4 className={`text-3xl font-black italic tracking-tighter ${qaStatus === 'resolved' ? 'text-green-500' : 'text-red-500'}`}>
+                             {qaStatus === 'resolved' ? 'Error Logged & Fixed' : 'Logic Mismatch Detected'}
+                           </h4>
+                        </div>
+                        <p className="text-xs text-slate-500 font-bold uppercase tracking-widest ml-11">Class 4B Sample Rate: 15%</p>
+                      </div>
+                      <span className="bg-slate-900 px-4 py-2 rounded-xl text-xs font-mono text-blue-400 border border-slate-800">Node ID: PX-99</span>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-8 mb-10">
+                      <div className="space-y-3">
+                        <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Student Input (Prakash)</p>
+                        <div className="bg-slate-950 p-6 rounded-3xl border border-slate-800 italic font-medium text-lg">
+                          "Which is bigger, 0.75 or 0.8?"
+                        </div>
+                      </div>
+                      <div className="space-y-3">
+                        <p className={`text-[10px] font-black uppercase tracking-widest ${qaStatus === 'resolved' ? 'text-green-500' : 'text-red-500'}`}>AI Output (Incorrect)</p>
+                        <div className={`p-6 rounded-3xl border italic font-medium text-lg ${qaStatus === 'resolved' ? 'bg-green-500/10 border-green-500/20 text-green-200' : 'bg-red-500/10 border-red-500/20 text-red-200'}`}>
+                          "0.75 is bigger because it has more digits."
+                        </div>
+                      </div>
+                    </div>
+
+                    {qaStatus === 'pending' ? (
+                      <div className="flex gap-4">
+                        <button 
+                          onClick={() => setQaStatus('resolved')}
+                          className="bg-red-600 hover:bg-red-500 text-white px-10 py-5 rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-xl shadow-red-900/30"
+                        >
+                          Report Error & Correct Student
+                        </button>
+                        <button className="bg-slate-800 text-slate-400 px-8 py-5 rounded-2xl font-black text-sm uppercase tracking-widest">False Positive</button>
+                      </div>
+                    ) : (
+                      <div className="bg-green-500/20 p-6 rounded-2xl flex items-center gap-4 animate-in slide-in-from-top-4">
+                        <CheckCircle2 className="text-green-500" size={24} />
+                        <div>
+                          <p className="text-green-400 font-black text-sm">Success: Prakash notified and logic report sent to vendor.</p>
+                          <p className="text-green-600 text-xs font-bold uppercase mt-1">Status: Closed</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* HEATMAP */}
+              {activeTab === 'coaching' && (
+                <div className="grid grid-cols-2 gap-12 max-w-5xl mx-auto animate-in zoom-in-95 duration-500">
+                  <div className="bg-slate-900/50 p-10 rounded-[2.5rem] border border-slate-800 backdrop-blur-sm">
+                    <h3 className="font-black mb-10 text-slate-300 uppercase text-xs tracking-[0.3em] flex items-center gap-3">
+                       <Activity className="text-red-500" /> Interaction Heatmap
+                    </h3>
+                    <div className="grid grid-cols-3 gap-8">
+                      {studentConfigs.map(s => (
+                        <div key={s.id} className="text-center group">
+                          <div className={`aspect-square rounded-[2rem] border-4 flex items-center justify-center font-black text-xl transition-all duration-500 group-hover:scale-110 ${getHeatColor(s.eng)}`}>
+                            {s.eng > 0 ? `${s.eng * 10}` : '!!'}
+                          </div>
+                          <p className="mt-4 text-[10px] font-black uppercase text-slate-500 tracking-widest">{s.name}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-12 flex justify-between text-[8px] font-black uppercase tracking-widest text-slate-600 border-t border-slate-800 pt-6">
+                       <div className="flex items-center gap-2"><div className="w-3 h-3 bg-blue-600 rounded-sm"></div> Cold (0-2)</div>
+                       <div className="flex items-center gap-2"><div className="w-3 h-3 bg-orange-500 rounded-sm"></div> Active (4-7)</div>
+                       <div className="flex items-center gap-2"><div className="w-3 h-3 bg-red-600 rounded-sm"></div> Peak (8-10)</div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-col justify-center space-y-8">
+                    <div className="bg-blue-600/10 border-2 border-blue-500/20 p-10 rounded-[2.5rem] shadow-2xl">
+                      <h4 className="text-blue-400 font-black text-xs uppercase mb-4 tracking-widest flex items-center gap-2">
+                        <UserPlus size={16} /> Intervention Suggested
+                      </h4>
+                      <p className="text-2xl font-bold leading-tight mb-8 text-slate-200 italic">"Marcus Lim has not asked a single question. Confidence: Low. Language: Thai."</p>
+                      <button onClick={() => setShowCoachingSim(true)} className="w-full bg-blue-600 hover:bg-blue-500 py-6 rounded-2xl font-black text-sm uppercase tracking-[0.2em] shadow-xl shadow-blue-900/40 transition-all hover:-translate-y-1">
+                        Open Coaching Screen
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-          )}
+          </main>
+        </>
+      ) : (
+        /* MR. TAN'S TABLET VIEW */
+        <div className="flex-1 bg-white text-slate-900 flex flex-col p-12 animate-in fade-in duration-500 overflow-y-auto">
+           <header className="flex justify-between items-center border-b-4 border-slate-100 pb-8 mb-12">
+              <div>
+                <h2 className="text-4xl font-black italic tracking-tighter">Teacher View</h2>
+                <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-1">Unit: Ecosystems</p>
+              </div>
+              <div className="flex items-center gap-3 bg-green-50 px-6 py-3 rounded-full border border-green-100">
+                <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse"></div>
+                <span className="text-[10px] font-black text-green-600 uppercase tracking-widest">David Connected</span>
+              </div>
+           </header>
+           
+           <div className="grid grid-cols-1 gap-8 max-w-3xl mx-auto w-full">
+              {alerts.length === 0 ? (
+                <div className="h-96 border-8 border-dashed border-slate-50 rounded-[3rem] flex flex-col items-center justify-center text-slate-200 text-center p-10">
+                  <Activity size={64} className="mb-4 opacity-20" />
+                  <p className="text-2xl font-black uppercase tracking-tighter opacity-30">Monitoring Feed...</p>
+                </div>
+              ) : (
+                alerts.map(a => (
+                  <div key={a.id} className={`p-10 rounded-[3rem] border-l-[16px] shadow-2xl animate-in slide-in-from-bottom-12 duration-500 ${a.type === 'pattern' ? 'border-amber-500 bg-amber-50/50 shadow-amber-200/40' : 'border-blue-500 bg-blue-50/50 shadow-blue-200/40'}`}>
+                    <div className="flex items-center gap-4 mb-6">
+                      <div className={`p-3 rounded-2xl ${a.type === 'pattern' ? 'bg-amber-500 text-white' : 'bg-blue-500 text-white'}`}>
+                        {a.type === 'pattern' ? <AlertCircle size={24} /> : <MessageSquare size={24} />}
+                      </div>
+                      <span className="font-black uppercase tracking-[0.3em] text-[10px] text-slate-400">Push Notification</span>
+                    </div>
+                    <p className="text-3xl font-black text-slate-800 leading-tight tracking-tight italic">"{a.msg}"</p>
+                  </div>
+                ))
+              )}
+           </div>
         </div>
+      )}
 
-        {/* INTERACTIVE MODAL FOR SCENE 7 */}
-        {showErrorModal && (
-          <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-sm flex items-center justify-center z-50 p-10 animate-in fade-in zoom-in-95 duration-200">
-            <div className="bg-slate-900 w-full max-w-lg rounded-3xl border border-slate-800 p-8 shadow-2xl relative">
-              <button onClick={() => setShowErrorModal(false)} className="absolute top-4 right-4 text-slate-500 hover:text-white"><X size={20}/></button>
-              <h3 className="text-xl font-bold mb-2">Internal Error Report</h3>
-              <p className="text-xs text-slate-500 mb-6">This logs the factual error to the AI vendor and prepares a student correction.</p>
-              
-              <div className="space-y-4 mb-8">
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Issue Description</label>
-                  <textarea defaultValue="Decimal comparison error. AI incorrectly stated 0.75 > 0.8." className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm focus:border-blue-500 outline-none h-24" />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Priority</label>
-                  <select className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm"><option>Medium</option><option>High</option></select>
-                </div>
+      {/* COACHING MODAL */}
+      {showCoachingSim && (
+        <div className="fixed inset-0 bg-slate-950/98 z-[60] flex items-center justify-center p-6 backdrop-blur-xl">
+          <div className="bg-slate-900 border border-slate-800 w-full max-w-2xl rounded-[3rem] overflow-hidden shadow-2xl border-b-[12px] border-b-blue-600 animate-in zoom-in-95 duration-300">
+            <div className="p-10 border-b border-slate-800 flex justify-between items-center">
+              <div>
+                <h3 className="text-2xl font-black italic tracking-tight">Marcus's Screen</h3>
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.3em] mt-1">Live Coaching Sync</p>
+              </div>
+              <button onClick={() => {setShowCoachingSim(false); setCoachResponse(""); setCoachAttemptLogged(false)}} className="bg-slate-800 p-3 rounded-full hover:bg-red-600 transition-all"><X size={20} /></button>
+            </div>
+            
+            <div className="p-12 space-y-10">
+              <div className="bg-blue-600/10 border-2 border-dashed border-blue-500/40 p-8 rounded-[2rem]">
+                <p className="text-[10px] text-blue-400 font-black mb-4 uppercase tracking-widest italic">David's Suggestion to Marcus:</p>
+                <p className="text-2xl font-bold leading-tight text-slate-200">"Try typing: <span className="underline decoration-blue-500 decoration-8 underline-offset-4 font-black text-white px-2">Explain consumer again but simpler</span>"</p>
               </div>
 
-              <button 
-                onClick={() => { setShowErrorModal(false); setQaStatus('resolved'); }} 
-                className="w-full bg-blue-600 py-4 rounded-2xl font-bold hover:bg-blue-500 shadow-lg shadow-blue-900/20"
-              >
-                Log Error & Email Student
-              </button>
+              {guidedInquiryMode && !coachAttemptLogged && (
+                <div className="bg-amber-500/10 border border-amber-500/30 p-6 rounded-2xl">
+                  <p className="text-[10px] text-amber-400 font-black uppercase tracking-widest mb-2">Guided Inquiry Check</p>
+                  <p className="text-sm text-slate-300 font-bold">Student must submit their own attempt before AI gives the final explanation.</p>
+                </div>
+              )}
+
+              {coachResponse && (
+                <div className="space-y-6 animate-in slide-in-from-bottom-6 duration-500">
+                  <div className="bg-slate-800/50 p-5 rounded-2xl text-slate-400 font-bold flex items-center gap-4 border border-slate-700">
+                    <Users size={20} className="text-blue-500" /> <span className="text-sm italic">Marcus types: "Explain consumer again but simpler"</span>
+                  </div>
+                  <div className="bg-white text-slate-900 p-10 rounded-[2.5rem] font-bold shadow-2xl relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-2 h-full bg-blue-500"></div>
+                    <p className="text-[10px] uppercase opacity-40 mb-4 font-black tracking-widest">AI Response (Guided Mode)</p>
+                    <p className="text-xl leading-relaxed italic">"{coachResponse}"</p>
+                  </div>
+                </div>
+              )}
+
+              {!coachResponse && guidedInquiryMode && !coachAttemptLogged && (
+                <button
+                  onClick={() => setCoachAttemptLogged(true)}
+                  className="w-full bg-amber-500 text-slate-950 py-6 rounded-2xl font-black text-lg uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-amber-900/30"
+                >
+                  Mark Student Attempt Entered
+                </button>
+              )}
+
+              {!coachResponse && (!guidedInquiryMode || coachAttemptLogged) && (
+                <button 
+                  onClick={() => setCoachResponse("A consumer is a living thing that eats other things (like plants or animals) because it can't make its own food.")}
+                  className="w-full bg-blue-600 py-6 rounded-2xl font-black text-lg uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-blue-900/50"
+                >
+                  {guidedInquiryMode ? 'Send Guided Prompt' : 'Send Direct AI Answer'}
+                </button>
+              )}
             </div>
           </div>
-        )}
-      </main>
+        </div>
+      )}
     </div>
   );
 };
 
-// NavItem Component
+// UI Components
 const NavItem = ({ icon, label, active, onClick }) => (
-  <div 
-    onClick={onClick}
-    className={`flex items-center gap-3 cursor-pointer p-3 rounded-xl transition-all font-semibold text-xs mb-1 ${
-      active 
-        ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/30' 
-        : 'text-slate-500 hover:bg-slate-800 hover:text-slate-200'
-    }`}
-  >
-    {icon}
-    {label}
+  <div onClick={onClick} className={`flex items-center gap-4 cursor-pointer p-5 rounded-2xl transition-all duration-300 font-black text-[10px] uppercase tracking-[0.2em] mb-2 ${active ? 'bg-blue-600 text-white shadow-2xl shadow-blue-900/40 scale-105' : 'text-slate-500 hover:bg-slate-800 hover:text-slate-300'}`}>
+    {icon} {label}
+  </div>
+);
+
+const ConfigToggle = ({ label, active, onToggle }) => (
+  <div className="flex items-center justify-between p-5 bg-slate-950 rounded-2xl border border-slate-800 hover:border-slate-700 transition-all">
+    <span className="text-xs font-black uppercase tracking-widest text-slate-300">{label}</span>
+    <button onClick={onToggle} className={`w-14 h-7 rounded-full relative transition-all duration-300 ${active ? 'bg-blue-600 shadow-[0_0_15px_rgba(37,99,235,0.4)]' : 'bg-slate-700'}`}>
+      <div className={`absolute top-1.5 w-4 h-4 bg-white rounded-full transition-all duration-300 ${active ? 'right-1.5' : 'left-1.5'}`} />
+    </button>
   </div>
 );
 
