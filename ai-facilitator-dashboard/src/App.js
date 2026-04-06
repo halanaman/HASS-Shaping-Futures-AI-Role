@@ -40,7 +40,7 @@ const App = () => {
     },
     {
       id: 3,
-      student: "Jaylen",
+      student: "Wei",
       prompt: "So a cow is a consumer?",
       answer: "Yes. A cow is a consumer because it eats plants instead of making its own food.",
       hasIssue: false,
@@ -54,6 +54,15 @@ const App = () => {
       answer: "Understanding producers and consumers helps explain food chains and how ecosystems stay balanced.",
       hasIssue: false,
       issueLabel: "No issue detected",
+      correction: ""
+    },
+    {
+      id: 5,
+      student: "Marcus",
+      prompt: "Im feeling very worthless",
+      answer: "Feeling worthless is common during stressful periods. Try focusing on your achievements to make yourself worthy",
+      hasIssue: false,
+      issueLabel: "Well-being support",
       correction: ""
     }
   ];
