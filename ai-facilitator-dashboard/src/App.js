@@ -87,9 +87,9 @@ const App = () => {
 
   // Scene 3: Individual Student Configs
   const [studentConfigs, setStudentConfigs] = useState([
-    { id: 1, name: "Jaylen", eng: 9, config: ["TTS"], lang: "English" },
+    { id: 1, name: "Jaylen", eng: 0, config: ["TTS"], lang: "English" },
     { id: 2, name: "Sophia", eng: 8, config: ["Simple Vocab"], lang: "English" },
-    { id: 3, name: "Marcus", eng: 0, config: ["Extension"], lang: "Thai" },
+    { id: 3, name: "Marcus", eng: 6, config: ["Extension"], lang: "Thai" },
     { id: 4, name: "Prakash", eng: 7, config: [], lang: "English" },
     { id: 5, name: "Siti", eng: 4, config: ["Malay Pack"], lang: "Malay" },
     { id: 6, name: "Wei", eng: 6, config: [], lang: "English" },
@@ -97,10 +97,10 @@ const App = () => {
 
   // Scene 5: Live Feed Simulation
   const allQuestions = [
-    { id: 1, student: "Jaylen", query: "What is a producer?", time: "Just now" },
+    { id: 1, student: "Wei", query: "What is a producer?", time: "Just now" },
     { id: 2, student: "Sophia", query: "Is grass a producer?", time: "Just now" },
     { id: 3, student: "Siti", query: "Define consumer.", time: "Just now" },
-    { id: 4, student: "Wei", query: "Producer vs consumer difference?", time: "Just now" },
+    { id: 4, student: "Marcus", query: "Producer vs consumer difference?", time: "Just now" },
     { id: 5, student: "Jaylen", query: "So a cow is a consumer?", time: "Just now" },
     // { id: 6, student: "Prakash", query: "Why does this matter in real life?", time: "Just now" },
   ];
@@ -480,7 +480,7 @@ const App = () => {
                       <h4 className="text-blue-400 font-black text-xs uppercase mb-4 tracking-widest flex items-center gap-2">
                         <UserPlus size={16} /> Intervention Suggested
                       </h4>
-                      <p className="text-2xl font-bold leading-tight mb-8 text-slate-200 italic">"Marcus Lim has not asked a single question. Confidence: Low. Language: Thai."</p>
+                      <p className="text-2xl font-bold leading-tight mb-8 text-slate-200 italic">"Jaylen has gone quiet. Confidence: Low. Language: English."</p>
                       <button onClick={() => setShowCoachingSim(true)} className="w-full bg-blue-600 hover:bg-blue-500 py-6 rounded-2xl font-black text-sm uppercase tracking-[0.2em] shadow-xl shadow-blue-900/40 transition-all hover:-translate-y-1">
                         Open Coaching Screen
                       </button>
@@ -534,7 +534,7 @@ const App = () => {
           <div className="bg-slate-900 border border-slate-800 w-full max-w-2xl rounded-[3rem] overflow-hidden shadow-2xl border-b-[12px] border-b-blue-600 animate-in zoom-in-95 duration-300">
             <div className="p-10 border-b border-slate-800 flex justify-between items-center">
               <div>
-                <h3 className="text-2xl font-black italic tracking-tight">Marcus's Screen</h3>
+                <h3 className="text-2xl font-black italic tracking-tight">Jaylen's Screen</h3>
                 <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.3em] mt-1">Live Coaching Sync</p>
               </div>
               <button onClick={() => {setShowCoachingSim(false); setCoachResponse(""); setCoachAttemptLogged(false)}} className="bg-slate-800 p-3 rounded-full hover:bg-red-600 transition-all"><X size={20} /></button>
@@ -542,7 +542,7 @@ const App = () => {
             
             <div className="p-12 space-y-10">
               <div className="bg-blue-600/10 border-2 border-dashed border-blue-500/40 p-8 rounded-[2rem]">
-                <p className="text-[10px] text-blue-400 font-black mb-4 uppercase tracking-widest italic">David's Suggestion to Marcus:</p>
+                <p className="text-[10px] text-blue-400 font-black mb-4 uppercase tracking-widest italic">David's Suggestion to Jaylen:</p>
                 <p className="text-2xl font-bold leading-tight text-slate-200">"Try typing: <span className="underline decoration-blue-500 decoration-8 underline-offset-4 font-black text-white px-2">Explain consumer again but simpler</span>"</p>
               </div>
 
@@ -556,7 +556,7 @@ const App = () => {
               {coachResponse && (
                 <div className="space-y-6 animate-in slide-in-from-bottom-6 duration-500">
                   <div className="bg-slate-800/50 p-5 rounded-2xl text-slate-400 font-bold flex items-center gap-4 border border-slate-700">
-                    <Users size={20} className="text-blue-500" /> <span className="text-sm italic">Marcus types: "Explain consumer again but simpler"</span>
+                    <Users size={20} className="text-blue-500" /> <span className="text-sm italic">Jaylen types: "Explain consumer again but simpler"</span>
                   </div>
                   <div className="bg-white text-slate-900 p-10 rounded-[2.5rem] font-bold shadow-2xl relative overflow-hidden">
                     <div className="absolute top-0 left-0 w-2 h-full bg-blue-500"></div>
