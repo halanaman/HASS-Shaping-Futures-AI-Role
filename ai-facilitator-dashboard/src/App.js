@@ -7,14 +7,83 @@ import {
 
 const App = () => {
   const [view, setView] = useState('david'); 
-  const [activeTab, setActiveTab] = useState('config');
+  const [activeTab, setActiveTab] = useState('flow');
   const [alerts, setAlerts] = useState([]);
-  const [qaStatus, setQaStatus] = useState('pending');
+  const [resolvedQaIds, setResolvedQaIds] = useState([]);
+  const [selectedQaId, setSelectedQaId] = useState(2);
+  const [showQaCorrectionForm, setShowQaCorrectionForm] = useState(false);
+  const [qaCorrectionDraft, setQaCorrectionDraft] = useState("");
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [showCoachingSim, setShowCoachingSim] = useState(false);
   const [coachResponse, setCoachResponse] = useState("");
   const [guidedInquiryMode, setGuidedInquiryMode] = useState(true);
   const [coachAttemptLogged, setCoachAttemptLogged] = useState(false);
+
+  const qaSamples = [
+    {
+      id: 1,
+      student: "Sophia",
+      prompt: "Is grass a producer?",
+      answer: "Yes. Grass is a producer because it makes its own food through photosynthesis.",
+      hasIssue: false,
+      issueLabel: "No issue detected",
+      correction: ""
+    },
+    {
+      id: 2,
+      student: "Prakash",
+      prompt: "Which is bigger, 0.75 or 0.8?",
+      answer: "0.75 is bigger because it has more digits.",
+      hasIssue: true,
+      issueLabel: "Decimal comparison error",
+      correction: "I made a mistake earlier. 0.8 is bigger than 0.75. Here's why: 0.8 = 0.80, and 80 is greater than 75. Sorry for the confusion!"
+    },
+    {
+      id: 3,
+      student: "Jaylen",
+      prompt: "So a cow is a consumer?",
+      answer: "Yes. A cow is a consumer because it eats plants instead of making its own food.",
+      hasIssue: false,
+      issueLabel: "No issue detected",
+      correction: ""
+    },
+    {
+      id: 4,
+      student: "Siti",
+      prompt: "Why does this matter in real life?",
+      answer: "Understanding producers and consumers helps explain food chains and how ecosystems stay balanced.",
+      hasIssue: false,
+      issueLabel: "No issue detected",
+      correction: ""
+    }
+  ];
+
+  const selectedQaSample = qaSamples.find(sample => sample.id === selectedQaId) || qaSamples[0];
+  const selectedQaResolved = resolvedQaIds.includes(selectedQaId);
+
+  const resolveQaSample = (id) => {
+    setResolvedQaIds(prev => (prev.includes(id) ? prev : [...prev, id]));
+  };
+
+  const openQaCorrectionForm = () => {
+    setShowQaCorrectionForm(true);
+    setQaCorrectionDraft("");
+  };
+
+  const submitQaCorrection = (event) => {
+    event.preventDefault();
+    const correctionText = qaCorrectionDraft.trim() || selectedQaSample.correction;
+
+    if (selectedQaSample.hasIssue) {
+      setResolvedQaIds(prev => (prev.includes(selectedQaId) ? prev : [...prev, selectedQaId]));
+      setAlerts([{ id: Date.now(), msg: `Correction sent for ${selectedQaSample.student}: ${correctionText}`, type: 'pattern' }, ...alerts]);
+    } else {
+      resolveQaSample(selectedQaId);
+    }
+
+    setShowQaCorrectionForm(false);
+    setQaCorrectionDraft("");
+  };
 
   // Scene 3: Individual Student Configs
   const [studentConfigs, setStudentConfigs] = useState([
@@ -246,50 +315,134 @@ const App = () => {
               {/* QUALITY ASSURANCE (Fixed/Updated) */}
               {activeTab === 'quality' && (
                 <div className="max-w-4xl mx-auto animate-in fade-in zoom-in-95 duration-500">
-                  <div className={`p-10 rounded-[2.5rem] border-2 shadow-2xl transition-all duration-500 ${qaStatus === 'resolved' ? 'bg-green-500/5 border-green-500/30' : 'bg-red-500/5 border-red-500/30'}`}>
+                  <div className={`p-10 rounded-[2.5rem] border-2 shadow-2xl transition-all duration-500 ${selectedQaResolved ? 'bg-green-500/5 border-green-500/30' : selectedQaSample.hasIssue ? 'bg-red-500/5 border-red-500/30' : 'bg-blue-500/5 border-blue-500/30'}`}>
                     <div className="flex justify-between items-start mb-10">
                       <div>
                         <div className="flex items-center gap-3 mb-2">
-                           <ShieldAlert className={qaStatus === 'resolved' ? 'text-green-500' : 'text-red-500'} size={32} />
-                           <h4 className={`text-3xl font-black italic tracking-tighter ${qaStatus === 'resolved' ? 'text-green-500' : 'text-red-500'}`}>
-                             {qaStatus === 'resolved' ? 'Error Logged & Fixed' : 'Logic Mismatch Detected'}
+                           <ShieldAlert className={selectedQaResolved ? 'text-green-500' : selectedQaSample.hasIssue ? 'text-red-500' : 'text-blue-400'} size={32} />
+                           <h4 className={`text-3xl font-black italic tracking-tighter ${selectedQaResolved ? 'text-green-500' : selectedQaSample.hasIssue ? 'text-red-500' : 'text-blue-400'}`}>
+                             {selectedQaResolved ? 'Review Complete' : selectedQaSample.hasIssue ? 'Issue Requires Action' : 'Awaiting Teacher Review'}
                            </h4>
                         </div>
                         <p className="text-xs text-slate-500 font-bold uppercase tracking-widest ml-11">Class 4B Sample Rate: 15%</p>
                       </div>
                       <span className="bg-slate-900 px-4 py-2 rounded-xl text-xs font-mono text-blue-400 border border-slate-800">Node ID: PX-99</span>
                     </div>
+
+                    <div className="max-h-64 overflow-y-auto pr-2 grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
+                      {qaSamples.map(sample => (
+                        <button
+                          key={sample.id}
+                          onClick={() => {
+                            setSelectedQaId(sample.id);
+                            setShowQaCorrectionForm(false);
+                            setQaCorrectionDraft("");
+                          }}
+                          className={`text-left p-4 rounded-2xl border transition-all ${selectedQaId === sample.id ? 'border-blue-500 bg-blue-500/10' : 'border-slate-800 bg-slate-900/40 hover:border-slate-600'}`}
+                        >
+                          <p className="text-[10px] uppercase tracking-widest font-black text-blue-400 mb-1">{sample.student}</p>
+                          <p className="text-sm font-bold text-slate-200 leading-tight">"{sample.prompt}"</p>
+                          <p className={`text-[10px] font-black uppercase tracking-widest mt-3 ${resolvedQaIds.includes(sample.id) ? 'text-green-500' : sample.hasIssue ? 'text-red-400' : 'text-blue-400'}`}>
+                            {resolvedQaIds.includes(sample.id) ? 'Resolved' : sample.hasIssue ? sample.issueLabel : 'Pending review'}
+                          </p>
+                        </button>
+                      ))}
+                    </div>
                     
                     <div className="grid grid-cols-2 gap-8 mb-10">
                       <div className="space-y-3">
-                        <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Student Input (Prakash)</p>
+                        <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Student Input ({selectedQaSample.student})</p>
                         <div className="bg-slate-950 p-6 rounded-3xl border border-slate-800 italic font-medium text-lg">
-                          "Which is bigger, 0.75 or 0.8?"
+                          "{selectedQaSample.prompt}"
                         </div>
                       </div>
                       <div className="space-y-3">
-                        <p className={`text-[10px] font-black uppercase tracking-widest ${qaStatus === 'resolved' ? 'text-green-500' : 'text-red-500'}`}>AI Output (Incorrect)</p>
-                        <div className={`p-6 rounded-3xl border italic font-medium text-lg ${qaStatus === 'resolved' ? 'bg-green-500/10 border-green-500/20 text-green-200' : 'bg-red-500/10 border-red-500/20 text-red-200'}`}>
-                          "0.75 is bigger because it has more digits."
+                        <p className={`text-[10px] font-black uppercase tracking-widest ${selectedQaResolved ? 'text-green-500' : selectedQaSample.hasIssue ? 'text-red-500' : 'text-blue-400'}`}>
+                          {selectedQaSample.hasIssue ? 'AI Output (Needs Review)' : 'AI Output'}
+                        </p>
+                        <div className={`p-6 rounded-3xl border italic font-medium text-lg ${selectedQaResolved ? 'bg-green-500/10 border-green-500/20 text-green-200' : selectedQaSample.hasIssue ? 'bg-red-500/10 border-red-500/20 text-red-200' : 'bg-blue-500/10 border-blue-500/20 text-blue-100'}`}>
+                          "{selectedQaSample.answer}"
                         </div>
                       </div>
                     </div>
 
-                    {qaStatus === 'pending' ? (
+                    {!selectedQaResolved ? (
+                      selectedQaSample.hasIssue && showQaCorrectionForm ? (
+                        <form onSubmit={submitQaCorrection} className="space-y-4">
+                          <div className="bg-slate-950 border border-amber-500/30 rounded-3xl p-5">
+                            <label className="block text-[10px] font-black uppercase tracking-widest text-amber-400 mb-3">
+                              Enter correction for {selectedQaSample.student}
+                            </label>
+                            <textarea
+                              value={qaCorrectionDraft}
+                              onChange={(e) => setQaCorrectionDraft(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                  e.preventDefault();
+                                  submitQaCorrection(e);
+                                }
+                              }}
+                              placeholder={selectedQaSample.correction}
+                              rows={5}
+                              className="w-full bg-slate-900 border border-slate-700 rounded-2xl p-4 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-amber-500 resize-none"
+                            />
+                            <p className="text-[10px] text-slate-500 mt-3 font-bold uppercase tracking-widest">
+                              Press Enter to submit. Leave it blank to use the suggested correction.
+                            </p>
+                          </div>
+                          <div className="flex gap-4">
+                            <button
+                              type="submit"
+                              className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-10 py-5 rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-xl shadow-amber-900/30"
+                            >
+                              Send Correction
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowQaCorrectionForm(false);
+                                setQaCorrectionDraft("");
+                              }}
+                              className="bg-slate-800 text-slate-300 px-8 py-5 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-slate-700 transition-all"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </form>
+                      ) : (
                       <div className="flex gap-4">
                         <button 
-                          onClick={() => setQaStatus('resolved')}
+                          onClick={() => {
+                            if (selectedQaSample.hasIssue) {
+                              openQaCorrectionForm();
+                              return;
+                            }
+                            resolveQaSample(selectedQaId);
+                          }}
                           className="bg-red-600 hover:bg-red-500 text-white px-10 py-5 rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-xl shadow-red-900/30"
                         >
-                          Report Error & Correct Student
+                          {selectedQaSample.hasIssue ? 'Resolve Issue' : 'Mark Reviewed'}
                         </button>
-                        <button className="bg-slate-800 text-slate-400 px-8 py-5 rounded-2xl font-black text-sm uppercase tracking-widest">False Positive</button>
+                        <button
+                          onClick={() => setSelectedQaId((selectedQaId % qaSamples.length) + 1)}
+                          className="bg-slate-800 text-slate-300 px-8 py-5 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-slate-700 transition-all"
+                        >
+                          Next Item
+                        </button>
                       </div>
+                      )
                     ) : (
                       <div className="bg-green-500/20 p-6 rounded-2xl flex items-center gap-4 animate-in slide-in-from-top-4">
                         <CheckCircle2 className="text-green-500" size={24} />
                         <div>
-                          <p className="text-green-400 font-black text-sm">Success: Prakash notified and logic report sent to vendor.</p>
+                          <p className="text-green-400 font-black text-sm">
+                            {selectedQaSample.hasIssue
+                              ? `Success: ${selectedQaSample.student} notified and logic report sent to vendor.`
+                              : `Review logged: ${selectedQaSample.student}'s response marked as acceptable.`}
+                          </p>
+                          {selectedQaSample.hasIssue && selectedQaSample.correction && (
+                            <p className="text-green-200 text-xs font-medium mt-2 leading-relaxed">"{selectedQaSample.correction}"</p>
+                          )}
                           <p className="text-green-600 text-xs font-bold uppercase mt-1">Status: Closed</p>
                         </div>
                       </div>
